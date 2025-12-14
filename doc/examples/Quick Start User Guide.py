@@ -27,7 +27,7 @@
 # [OHLC](https://en.wikipedia.org/wiki/Open-high-low-close_chart)
 # data_ (stocks, forex, futures, crypto, ...) as a
 # [pandas.DataFrame](https://pandas.pydata.org/pandas-docs/stable/10min.html)
-# with columns `'Open'`, `'High'`, `'Low'`, `'Close'` and (optionally) `'Volume'`.
+# with columns `'open'`, `'high'`, `'low'`, `'close'` and (optionally) `'volume'`.
 # Such data is widely obtainable, e.g. with packages:
 # * [pandas-datareader](https://pandas-datareader.readthedocs.io/en/latest/),
 # * [Quandl](https://www.quandl.com/tools/python),

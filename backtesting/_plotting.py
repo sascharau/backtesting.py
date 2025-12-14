@@ -164,7 +164,7 @@ def _maybe_resample_data(resample_rule, df, indicators, equity_data, trades):
 
     def _weighted_returns(s, trades=trades):
         df = trades.loc[s.index]
-        return ((df['Size'].abs() * df['ReturnPct']) / df['Size'].abs().sum()).sum()
+        return ((df['size'].abs() * df['returnpct']) / df['size'].abs().sum()).sum()
 
     def _group_trades(column):
         def f(s, new_index=pd.Index(df.index.astype(np.int64)), bars=trades[column]):
@@ -176,12 +176,12 @@ def _maybe_resample_data(resample_rule, df, indicators, equity_data, trades):
         return f
 
     if len(trades):  # Avoid pandas "resampling on Int64 index" error
-        trades = trades.assign(count=1).resample(freq, on='ExitTime', label='right').agg(dict(
+        trades = trades.assign(count=1).resample(freq, on='exittime', label='right').agg(dict(
             TRADES_AGG,
-            ReturnPct=_weighted_returns,
+            returnpct=_weighted_returns,
             count='sum',
-            EntryBar=_group_trades('EntryTime'),
-            ExitBar=_group_trades('ExitTime'),
+            entrybar=_group_trades('entrytime'),
+            exitbar=_group_trades('exittime'),
         )).dropna()
 
     return df, indicators, equity_data, trades
@@ -214,7 +214,7 @@ def plot(*, results: pd.Series,
     equity_data = results['_equity_curve'].copy(deep=False)
     trades = results['_trades']
 
-    plot_volume = plot_volume and not df.Volume.isnull().all()
+    plot_volume = plot_volume and not df.volume.isnull().all()
     plot_equity = plot_equity and not trades.empty
     plot_return = plot_return and not trades.empty
     plot_pl = plot_pl and not trades.empty
@@ -256,13 +256,13 @@ def plot(*, results: pd.Series,
     figs_above_ohlc, figs_below_ohlc = [], []
 
     source = ColumnDataSource(df)
-    source.add((df.Close >= df.Open).values.astype(np.uint8).astype(str), 'inc')
+    source.add((df.close >= df.open).values.astype(np.uint8).astype(str), 'inc')
 
     trade_source = ColumnDataSource(dict(
-        index=trades['ExitBar'],
-        datetime=trades['ExitTime'],
-        size=trades['Size'],
-        returns_positive=(trades['ReturnPct'] > 0).astype(int).astype(str),
+        index=trades['exitbar'],
+        datetime=trades['exittime'],
+        size=trades['size'],
+        returns_positive=(trades['returnpct'] > 0).astype(int).astype(str),
     ))
 
     inc_cmap = factor_cmap('inc', COLORS, ['0', '1'])
@@ -285,15 +285,15 @@ return this.labels[index] || "";
         ''')
 
     NBSP = '\N{NBSP}' * 4  # noqa: E999
-    ohlc_extreme_values = df[['High', 'Low']].copy(deep=False)
+    ohlc_extreme_values = df[['high', 'low']].copy(deep=False)
     ohlc_tooltips = [
         ('x, y', NBSP.join(('$index',
                             '$y{0,0.0[0000]}'))),
-        ('OHLC', NBSP.join(('@Open{0,0.0[0000]}',
-                            '@High{0,0.0[0000]}',
-                            '@Low{0,0.0[0000]}',
-                            '@Close{0,0.0[0000]}'))),
-        ('Volume', '@Volume{0,0}')]
+        ('OHLC', NBSP.join(('@open{0,0.0[0000]}',
+                            '@high{0,0.0[0000]}',
+                            '@low{0,0.0[0000]}',
+                            '@close{0,0.0[0000]}'))),
+        ('volume', '@volume{0,0}')]
 
     def new_indicator_figure(**kwargs):
         kwargs.setdefault('height', _INDICATOR_HEIGHT)
@@ -345,7 +345,7 @@ return this.labels[index] || "";
                 # Include max dd end points. Otherwise the MaxDD line looks amiss.
                 dd_start, int(dd_end), min(int(dd_end + 1), equity.size - 1),
             ])
-            select = pd.Index(trades['ExitBar']).union(interest_points)
+            select = pd.Index(trades['exitbar']).union(interest_points)
             select = select.unique().dropna()
             equity = equity.iloc[select].reindex(equity.index)
             equity.interpolate(inplace=True)
@@ -430,17 +430,17 @@ return this.labels[index] || "";
         fig = new_indicator_figure(y_axis_label="Profit / Loss", height=80)
         fig.add_layout(Span(location=0, dimension='width', line_color='#666666',
                             line_dash='dashed', level='underlay', line_width=1))
-        trade_source.add(trades['ReturnPct'], 'returns')
-        size = trades['Size'].abs()
+        trade_source.add(trades['returnpct'], 'returns')
+        size = trades['size'].abs()
         size = np.interp(size, (size.min(), size.max()), (8, 20))
         trade_source.add(size, 'marker_size')
         if 'count' in trades:
             trade_source.add(trades['count'], 'count')
-        trade_source.add(trades[['EntryBar', 'ExitBar']].values.tolist(), 'lines')
+        trade_source.add(trades[['entrybar', 'exitbar']].values.tolist(), 'lines')
         fig.multi_line(xs='lines',
                        ys=transform('returns', CustomJSTransform(v_func='return [...xs].map(i => [0, i]);')),
                        source=trade_source, color='#999', line_width=1)
-        trade_source.add(np.take(['inverted_triangle', 'triangle'], trades['Size'] > 0), 'triangles')
+        trade_source.add(np.take(['inverted_triangle', 'triangle'], trades['size'] > 0), 'triangles')
         r1 = fig.scatter(
             'index', 'returns', source=trade_source, fill_color=cmap,
             marker='triangles', line_color='black', size='marker_size')
@@ -459,8 +459,8 @@ return this.labels[index] || "";
         fig.xaxis.formatter = fig_ohlc.xaxis[0].formatter
         fig.xaxis.visible = True
         fig_ohlc.xaxis.visible = False  # Show only Volume's xaxis
-        r = fig.vbar('index', BAR_WIDTH, 'Volume', source=source, color=inc_cmap)
-        set_tooltips(fig, [('Volume', '@Volume{0.00 a}')], renderers=[r])
+        r = fig.vbar('index', BAR_WIDTH, 'volume', source=source, color=inc_cmap)
+        set_tooltips(fig, [('volume', '@volume{0.00 a}')], renderers=[r])
         fig.yaxis.formatter = NumeralTickFormatter(format="0 a")
         return fig
 
@@ -498,27 +498,27 @@ return this.labels[index] || "";
         df2.index += df2['_width'] / 2 - .5
         df2['_width'] -= .1  # Candles don't touch
 
-        df2['inc'] = (df2.Close >= df2.Open).astype(int).astype(str)
+        df2['inc'] = (df2.close >= df2.open).astype(int).astype(str)
         df2.index.name = None
         source2 = ColumnDataSource(df2)
-        fig_ohlc.segment('index', 'High', 'index', 'Low', source=source2, color='#bbbbbb')
+        fig_ohlc.segment('index', 'high', 'index', 'low', source=source2, color='#bbbbbb')
         colors_lighter = [lightness(BEAR_COLOR, .92),
                           lightness(BULL_COLOR, .92)]
-        fig_ohlc.vbar('index', '_width', 'Open', 'Close', source=source2, line_color=None,
+        fig_ohlc.vbar('index', '_width', 'open', 'close', source=source2, line_color=None,
                       fill_color=factor_cmap('inc', colors_lighter, ['0', '1']))
 
     def _plot_ohlc():
         """Main OHLC bars"""
-        fig_ohlc.segment('index', 'High', 'index', 'Low', source=source, color="black",
+        fig_ohlc.segment('index', 'high', 'index', 'low', source=source, color="black",
                          legend_label='OHLC')
-        r = fig_ohlc.vbar('index', BAR_WIDTH, 'Open', 'Close', source=source,
+        r = fig_ohlc.vbar('index', BAR_WIDTH, 'open', 'close', source=source,
                           line_color="black", fill_color=inc_cmap, legend_label='OHLC')
         return r
 
     def _plot_ohlc_trades():
         """Trade entry / exit markers on OHLC plot"""
-        trade_source.add(trades[['EntryBar', 'ExitBar']].values.tolist(), 'position_lines_xs')
-        trade_source.add(trades[['EntryPrice', 'ExitPrice']].values.tolist(), 'position_lines_ys')
+        trade_source.add(trades[['entrybar', 'exitbar']].values.tolist(), 'position_lines_xs')
+        trade_source.add(trades[['entryprice', 'exitprice']].values.tolist(), 'position_lines_ys')
         fig_ohlc.multi_line(xs='position_lines_xs', ys='position_lines_ys',
                             source=trade_source, line_color=trades_cmap,
                             legend_label=f'Trades ({len(trades)})',

@@ -14,9 +14,9 @@ if __name__ == '__main__':
         license='AGPL-3.0',
         url='https://kernc.github.io/backtesting.py/',
         project_urls={
-            'Documentation': 'https://kernc.github.io/backtesting.py/doc/backtesting/',
-            'Source': 'https://github.com/kernc/backtesting.py/',
-            'Tracker': 'https://github.com/kernc/backtesting.py/issues',
+            'documentation': 'https://kernc.github.io/backtesting.py/doc/backtesting/',
+            'source': 'https://github.com/kernc/backtesting.py/',
+            'tracker': 'https://github.com/kernc/backtesting.py/issues',
         },
         long_description=open(os.path.join(os.path.dirname(__file__), 'README.md'),
                               encoding='utf-8').read(),

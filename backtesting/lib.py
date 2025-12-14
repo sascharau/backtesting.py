@@ -32,11 +32,11 @@ __pdoc__ = {}
 
 
 OHLCV_AGG = OrderedDict((
-    ('Open', 'first'),
-    ('High', 'max'),
-    ('Low', 'min'),
-    ('Close', 'last'),
-    ('Volume', 'sum'),
+    ('open', 'first'),
+    ('high', 'max'),
+    ('low', 'min'),
+    ('close', 'last'),
+    ('volume', 'sum'),
 ))
 """Dictionary of rules for aggregating resampled OHLCV data frames,
 e.g.
@@ -45,28 +45,28 @@ e.g.
 """
 
 TRADES_AGG = OrderedDict((
-    ('Size', 'sum'),
-    ('EntryBar', 'first'),
-    ('ExitBar', 'last'),
-    ('EntryPrice', 'mean'),
-    ('ExitPrice', 'mean'),
-    ('PnL', 'sum'),
-    ('ReturnPct', 'mean'),
-    ('EntryTime', 'first'),
-    ('ExitTime', 'last'),
-    ('Duration', 'sum'),
+    ('size', 'sum'),
+    ('entrybar', 'first'),
+    ('exitbar', 'last'),
+    ('entryprice', 'mean'),
+    ('exitprice', 'mean'),
+    ('pnl', 'sum'),
+    ('returnpct', 'mean'),
+    ('entrytime', 'first'),
+    ('exittime', 'last'),
+    ('duration', 'sum'),
 ))
 """Dictionary of rules for aggregating resampled trades data,
 e.g.
 
-    stats['_trades'].resample('1D', on='ExitTime',
+    stats['_trades'].resample('1D', on='exittime',
                               label='right').agg(TRADES_AGG)
 """
 
 _EQUITY_AGG = {
-    'Equity': 'last',
-    'DrawdownPct': 'max',
-    'DrawdownDuration': 'max',
+    'equity': 'last',
+    'drawdownpct': 'max',
+    'drawdownduration': 'max',
 }
 
 
@@ -75,7 +75,7 @@ def barssince(condition: Sequence[bool], default=np.inf) -> int:
     Return the number of bars since `condition` sequence was last `True`,
     or if never, return `default`.
 
-        >>> barssince(self.data.Close > self.data.Open)
+        >>> barssince(self.data.close > self.data.open)
         3
     """
     return next(compress(range(len(condition)), reversed(condition)), default)
@@ -86,7 +86,7 @@ def cross(series1: Sequence, series2: Sequence) -> bool:
     Return `True` if `series1` and `series2` just crossed
     (above or below) each other.
 
-        >>> cross(self.data.Close, self.sma)
+        >>> cross(self.data.close, self.sma)
         True
 
     """
@@ -98,7 +98,7 @@ def crossover(series1: Sequence, series2: Sequence) -> bool:
     Return `True` if `series1` just crossed over (above)
     `series2`.
 
-        >>> crossover(self.data.Close, self.sma)
+        >>> crossover(self.data.close, self.sma)
         True
     """
     series1 = (
@@ -156,9 +156,9 @@ def quantile(series: Sequence, quantile: Union[None, float] = None):
     `series` at this quantile. If used to working with percentiles, just
     divide your percentile amount with 100 to obtain quantiles.
 
-        >>> quantile(self.data.Close[-20:], .1)
+        >>> quantile(self.data.close[-20:], .1)
         162.130
-        >>> quantile(self.data.Close)
+        >>> quantile(self.data.close)
         0.13
     """
     if quantile is None:
@@ -187,7 +187,7 @@ def compute_stats(
     You can also tune `risk_free_rate`, used in calculation of Sharpe and Sortino ratios.
 
         >>> stats = Backtest(GOOG, MyStrategy).run()
-        >>> only_long_trades = stats._trades[stats._trades.Size > 0]
+        >>> only_long_trades = stats._trades[stats._trades.size > 0]
         >>> long_stats = compute_stats(stats=stats, trades=only_long_trades,
         ...                            data=GOOG, risk_free_rate=.02)
     """
@@ -199,7 +199,7 @@ def compute_stats(
         equity = equity.copy()
         equity[:] = stats._equity_curve.Equity.iloc[0]
         for t in trades.itertuples(index=False):
-            equity.iloc[t.EntryBar:] += t.PnL
+            equity.iloc[t.entrybar:] += t.pnl
     return _compute_stats(trades=trades, equity=equity.values, ohlc_data=data,
                           risk_free_rate=risk_free_rate, strategy_instance=stats._strategy)
 
@@ -251,7 +251,7 @@ http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
         class System(Strategy):
             def init(self):
                 self.sma = resample_apply(
-                    'D', SMA, self.data.Close, 10, plot=False)
+                    'D', SMA, self.data.close, 10, plot=False)
 
     The above short snippet is roughly equivalent to:
 
@@ -259,7 +259,7 @@ http://pandas.pydata.org/pandas-docs/stable/timeseries.html#offset-aliases
             def init(self):
                 # Strategy exposes `self.data` as raw NumPy arrays.
                 # Let's convert closing prices back to pandas Series.
-                close = self.data.Close.s
+                close = self.data.close.s
 
                 # Resample to daily resolution. Aggregate groups
                 # using their last value (i.e. closing price at the end
@@ -358,16 +358,16 @@ def random_ohlc_data(example_data: pd.DataFrame, *,
     def shuffle(x):
         return x.sample(frac=frac, replace=frac > 1, random_state=random_state)
 
-    if len(example_data.columns.intersection({'Open', 'High', 'Low', 'Close'})) != 4:
+    if len(example_data.columns.intersection({'open', 'high', 'low', 'close'})) != 4:
         raise ValueError("`data` must be a pandas.DataFrame with columns "
-                         "'Open', 'High', 'Low', 'Close'")
+                         "'open', 'high', 'low', 'close'")
     while True:
         df = shuffle(example_data)
         df.index = example_data.index
-        padding = df.Close - df.Open.shift(-1)
-        gaps = shuffle(example_data.Open.shift(-1) - example_data.Close)
+        padding = df.close - df.open.shift(-1)
+        gaps = shuffle(example_data.open.shift(-1) - example_data.close)
         deltas = (padding + gaps).shift(1).fillna(0).cumsum()
-        for key in ('Open', 'High', 'Low', 'Close'):
+        for key in ('open', 'high', 'low', 'close'):
             df[key] += deltas
         yield df
 
@@ -468,7 +468,7 @@ class TrailingStrategy(Strategy):
         Set the lookback period for computing ATR. The default value
         of 100 ensures a _stable_ ATR.
         """
-        hi, lo, c_prev = self.data.High, self.data.Low, pd.Series(self.data.Close).shift(1)
+        hi, lo, c_prev = self.data.high, self.data.low, pd.Series(self.data.close).shift(1)
         tr = np.max([hi - lo, (c_prev - hi).abs(), (c_prev - lo).abs()], axis=0)
         atr = pd.Series(tr).rolling(periods).mean().bfill().values
         self.__atr = atr
@@ -490,7 +490,7 @@ class TrailingStrategy(Strategy):
             with `mean(Close * pct / atr)` and set with `set_trailing_sl`.
         """
         assert 0 < pct < 1, 'Need pct= as rate, i.e. 5% == 0.05'
-        pct_in_atr = np.mean(self.data.Close * pct / self.__atr)  # type: ignore
+        pct_in_atr = np.mean(self.data.close * pct / self.__atr)  # type: ignore
         self.set_trailing_sl(pct_in_atr)
 
     def next(self):
@@ -500,10 +500,10 @@ class TrailingStrategy(Strategy):
         for trade in self.trades:
             if trade.is_long:
                 trade.sl = max(trade.sl or -np.inf,
-                               self.data.Close[index] - self.__atr[index] * self.__n_atr)
+                               self.data.close[index] - self.__atr[index] * self.__n_atr)
             else:
                 trade.sl = min(trade.sl or np.inf,
-                               self.data.Close[index] + self.__atr[index] * self.__n_atr)
+                               self.data.close[index] + self.__atr[index] * self.__n_atr)
 
 
 class FractionalBacktest(Backtest):
@@ -511,7 +511,7 @@ class FractionalBacktest(Backtest):
     A `backtesting.backtesting.Backtest` that supports fractional share trading
     by simple composition. It applies roughly the transformation:
 
-        data = (data * fractional_unit).assign(Volume=data.Volume / fractional_unit)
+        data = (data * fractional_unit).assign(volume=data.volume / fractional_unit)
 
     as left unchallenged in [this FAQ entry on GitHub](https://github.com/kernc/backtesting.py/issues/134),
     then passes `data`, `args*`, and `**kwargs` to its super.
@@ -535,9 +535,9 @@ class FractionalBacktest(Backtest):
             fractional_unit = 1 / kwargs.pop('satoshi')
         self._fractional_unit = fractional_unit
         self.__data: pd.DataFrame = data.copy(deep=False)  # Shallow copy
-        for col in ('Open', 'High', 'Low', 'Close',):
+        for col in ('open', 'high', 'low', 'close',):
             self.__data[col] = self.__data[col] * self._fractional_unit
-        for col in ('Volume',):
+        for col in ('volume',):
             self.__data[col] = self.__data[col] / self._fractional_unit
         with warnings.catch_warnings(record=True):
             warnings.filterwarnings(action='ignore', message='frac')
@@ -548,8 +548,8 @@ class FractionalBacktest(Backtest):
             result = super().run(**kwargs)
 
         trades: pd.DataFrame = result['_trades']
-        trades['Size'] *= self._fractional_unit
-        trades[['EntryPrice', 'ExitPrice', 'TP', 'SL']] /= self._fractional_unit
+        trades['size'] *= self._fractional_unit
+        trades[['entryprice', 'exitprice', 'tp', 'sl']] /= self._fractional_unit
 
         indicators = result['_strategy']._indicators
         for indicator in indicators:

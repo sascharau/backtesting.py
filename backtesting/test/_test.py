@@ -60,8 +60,8 @@ class SmaCross(Strategy):
     slow = 30
 
     def init(self):
-        self.sma1 = self.I(SMA, self.data.Close, self.fast)
-        self.sma2 = self.I(SMA, self.data.Close, self.slow)
+        self.sma1 = self.I(SMA, self.data.close, self.fast)
+        self.sma2 = self.I(SMA, self.data.close, self.slow)
 
     def next(self):
         if crossover(self.sma1, self.sma2):
@@ -95,13 +95,13 @@ class TestBacktest(TestCase):
 
     def test_data_missing_columns(self):
         df = GOOG.copy(deep=False)
-        del df['Open']
+        del df['open']
         with self.assertRaises(ValueError):
             Backtest(df, SmaCross).run()
 
     def test_data_nan_columns(self):
         df = GOOG.copy()
-        df['Open'] = np.nan
+        df['open'] = np.nan
         with self.assertRaises(ValueError):
             Backtest(df, SmaCross).run()
 
